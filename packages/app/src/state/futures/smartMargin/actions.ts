@@ -67,6 +67,7 @@ import {
 	serializeTrades,
 } from 'utils/futures'
 import logError from 'utils/logError'
+import proxy from 'utils/proxy'
 import { refetchWithComparator } from 'utils/queries'
 
 import { selectFuturesType, selectMarketIndexPrice } from '../common/selectors'
@@ -142,7 +143,7 @@ export const fetchMarketsV2 = createAsyncThunk<
 
 	if (!supportedNetwork) return
 	try {
-		const markets = await sdk.futures.getMarkets()
+		const markets = await proxy.get('futures/markets')
 		// apply overrides
 		const overrideMarkets = markets.map((m) => {
 			return marketOverrides[m.marketKey]
@@ -175,7 +176,13 @@ export const fetchSmartMarginBalanceInfo = createAsyncThunk<
 		const crossMarginSupported = selectSmartMarginSupportedNetwork(getState())
 		if (!account || !wallet || !crossMarginSupported) return
 		try {
-			const balanceInfo = await sdk.futures.getSmartMarginBalanceInfo(wallet, account)
+			const balanceInfo = await proxy.get('futures/smart-margin-baalnce-info', {
+				params: {
+					walletAddress: wallet,
+					smartMarginAddress: account,
+				},
+			})
+
 			return { balanceInfo: serializeCmBalanceInfo(balanceInfo), account, network }
 		} catch (err) {
 			logError(err)
@@ -198,10 +205,15 @@ export const fetchSmartMarginPositions = createAsyncThunk<
 
 	if (!account || !supportedNetwork) return
 	try {
-		const positions = await sdk.futures.getFuturesPositions(
-			account,
-			markets.map((m) => ({ asset: m.asset, marketKey: m.marketKey, address: m.marketAddress }))
-		)
+		const positions = await proxy.post('futures/futures-positions', {
+			address: account,
+			futuresMarkets: markets.map((m) => ({
+				asset: m.asset,
+				marketKey: m.marketKey,
+				address: m.marketAddress,
+			})),
+		})
+
 		const serializedPositions = positions.map(
 			(p) => serializeWeiObject(p) as PerpsV2Position<string>
 		)
@@ -231,13 +243,16 @@ export const refetchSmartMarginPosition = createAsyncThunk<
 
 	const result = await refetchWithComparator(
 		() =>
-			sdk.futures.getFuturesPositions(account!, [
-				{
-					asset: marketInfo.asset,
-					marketKey: marketInfo.marketKey,
-					address: marketInfo.marketAddress,
-				},
-			]),
+			proxy.post('futures/futures-positions', {
+				address: account,
+				futuresMarkets: [
+					{
+						asset: marketInfo.asset,
+						marketKey: marketInfo.marketKey,
+						address: marketInfo.marketAddress,
+					},
+				],
+			}),
 		position?.remainingMargin?.toString(),
 		(existing, next) => {
 			return existing === next[0]?.remainingMargin.toString()
@@ -268,7 +283,11 @@ export const fetchSmartMarginAccount = createAsyncThunk<
 	if (accounts[network]?.[wallet]?.account) return
 
 	try {
-		const accounts = await sdk.futures.getSmartMarginAccounts(wallet)
+		const accounts = await proxy.get('futures/smart-margin-accounts', {
+			params: {
+				walletAddresss: wallet,
+			},
+		})
 		const account = accounts[0]
 		if (account) return { account, wallet, network }
 		return undefined
@@ -281,7 +300,7 @@ export const fetchSmartMarginAccount = createAsyncThunk<
 export const fetchDailyVolumesV2 = createAsyncThunk<FuturesVolumes<string>, void, ThunkConfig>(
 	'futures/fetchDailyVolumesV2',
 	async (_, { extra: { sdk } }) => {
-		const volumes = await sdk.futures.getDailyVolumes()
+		const volumes = await proxy.get('futures/daily-volumes')
 		return serializeFuturesVolumes(volumes)
 	}
 )
@@ -323,8 +342,13 @@ export const fetchSmartMarginOpenOrders = createAsyncThunk<
 
 	if (!account || !supportedNetwork) return
 	try {
-		const orders = await sdk.futures.getConditionalOrders(account)
-		const delayedOrders = await sdk.futures.getDelayedOrders(account, marketAddresses)
+		const orders = await proxy.get('futures/conditional-orders', { params: { account } })
+		const delayedOrders = await proxy.get('futures/delayed-orders', {
+			params: {
+				account,
+				marketAddresses,
+			},
+		})
 		const nonzeroOrders = formatDelayedOrders(delayedOrders, markets)
 
 		const orderDropped = existingOrders.length > nonzeroOrders.length
@@ -378,7 +402,7 @@ export const fetchSmartMarginTradePreview = createAsyncThunk<
 
 		try {
 			const leverageSide = selectSmartMarginLeverageSide(getState())
-			const preview = await sdk.futures.getSmartMarginTradePreview({
+			const preview = await proxy.post('futures/smart-margin-trade-preview', {
 				account: account || ZERO_ADDRESS,
 				market: {
 					marketAddress: params.market.address,
@@ -723,7 +747,11 @@ export const fetchPositionHistoryV2 = createAsyncThunk<
 		const wallet = selectWallet(getState())
 		const supported = selectSmartMarginSupportedNetwork(getState())
 		if (!wallet || !account || !supported) return
-		const history = await sdk.futures.getPositionHistory(account)
+		const history = await proxy.get('futures/position-history', {
+			params: {
+				address: account,
+			},
+		})
 		return { account, wallet, networkId, history: serializePositionHistory(history) }
 	} catch (err) {
 		notifyError('Failed to fetch position history', err)
@@ -750,11 +778,13 @@ export const fetchTradesForSelectedMarket = createAsyncThunk<
 		const futuresSupported = selectSmartMarginSupportedNetwork(getState())
 
 		if (!futuresSupported || !wallet || !account) return
-		const trades = await sdk.futures.getTradesForMarket(
-			marketAsset,
-			wallet,
-			FuturesMarginType.SMART_MARGIN
-		)
+		const trades = await proxy.get('futures/trades-for-markets', {
+			params: {
+				marketAsset,
+				walletAddress: wallet,
+				accountType: FuturesMarginType.SMART_MARGIN,
+			},
+		})
 		return { trades: serializeTrades(trades), networkId, account, wallet }
 	} catch (err) {
 		notifyError('Failed to fetch futures trades for selected market', err)
@@ -779,7 +809,13 @@ export const fetchAllV2TradesForAccount = createAsyncThunk<
 		const account = selectSmartMarginAccount(getState())
 		const futuresSupported = selectSmartMarginSupportedNetwork(getState())
 		if (!futuresSupported || !wallet || !account) return
-		const trades = await sdk.futures.getAllTrades(wallet, FuturesMarginType.SMART_MARGIN, 200)
+		const trades = await proxy.get('futures/all-trades', {
+			params: {
+				walletAddress: wallet,
+				accountType: FuturesMarginType.SMART_MARGIN,
+				pageLength: 200,
+			},
+		})
 		return { trades: serializeTrades(trades), networkId, account, wallet }
 	} catch (err) {
 		notifyError('Failed to fetch futures trades', err)
@@ -842,8 +878,16 @@ export const fetchMarginTransfersV2 = createAsyncThunk<
 	const cmAccount = selectSmartMarginAccount(getState())
 	if (!wallet || !supportedNetwork) return
 	try {
-		const marketTransfers = await sdk.futures.getMarketMarginTransfers(cmAccount)
-		const accountTransfers = await sdk.futures.getSmartMarginAccountTransfers(cmAccount)
+		const marketTransfers = await proxy.get('futures/market-margin-transfers', {
+			params: {
+				walletAddress: cmAccount,
+			},
+		})
+		const accountTransfers = await proxy.get('futures/smart-margin-account-transfers', {
+			params: {
+				walletAddress: cmAccount,
+			},
+		})
 
 		return {
 			marketMarginTransfers: marketTransfers,
@@ -868,11 +912,13 @@ export const fetchFuturesFees = createAsyncThunk<
 	},
 	void,
 	ThunkConfig
->('futures/fetchFuturesFees', async (_, { getState, extra: { sdk } }) => {
+>('futures/fetchFuturesFees', async (_, { getState }) => {
 	const { start, end } = selectSelectedEpoch(getState())
 
 	try {
-		const totalFuturesFeePaid = await sdk.kwentaToken.getFuturesFee(start, end)
+		const totalFuturesFeePaid = await proxy.get('kwentaToken/futures-fee', {
+			params: { start, end },
+		})
 		return { totalFuturesFeePaid: totalFuturesFeePaid.toString() }
 	} catch (err) {
 		notifyError('Failed to fetch futures fees', err)
@@ -886,12 +932,18 @@ export const fetchFuturesFeesForAccount = createAsyncThunk<
 	},
 	void,
 	ThunkConfig
->('futures/fetchFuturesFeesForAccount', async (_, { getState, extra: { sdk } }) => {
+>('futures/fetchFuturesFeesForAccount', async (_, { getState }) => {
 	const { start, end } = selectSelectedEpoch(getState())
 
 	try {
 		const wallet = selectWallet(getState())
-		const futuresFeePaid = await sdk.kwentaToken.getFuturesFeeForAccount(wallet!, start, end)
+		const futuresFeePaid = await proxy.get('kwentaToken/futures-fee-for-account', {
+			params: {
+				account: wallet,
+				start,
+				end,
+			},
+		})
 		return { futuresFeePaid: futuresFeePaid.toString() }
 	} catch (err) {
 		notifyError('Failed to fetch futures fees for the account', err)
@@ -921,7 +973,7 @@ export const createSmartMarginAccount = createAsyncThunk<
 		}
 
 		try {
-			const accounts = await sdk.futures.getSmartMarginAccounts()
+			const accounts = await proxy.get('futures/smart-margin-accounts')
 			// Check for existing account on the contract as only one account per user
 			if (accounts[0]) {
 				dispatch(setSmartMarginAccount({ account: accounts[0], wallet: wallet, network }))
@@ -1505,8 +1557,12 @@ export const fetchFundingRatesHistory = createAsyncThunk<
 	{ marketAsset: FuturesMarketAsset; rates: any },
 	FuturesMarketAsset,
 	ThunkConfig
->('futures/fetchFundingRatesHistory', async (marketAsset, { extra: { sdk } }) => {
-	const rates = await sdk.futures.getMarketFundingRatesHistory(marketAsset)
+>('futures/fetchFundingRatesHistory', async (marketAsset) => {
+	const rates = await proxy.get('futures/get-market-funding-rates-history', {
+		params: {
+			marketAsset,
+		},
+	})
 	return { marketAsset, rates }
 })
 
