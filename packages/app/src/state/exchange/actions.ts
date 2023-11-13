@@ -133,8 +133,8 @@ export const fetchTokenList = createAsyncThunk<any, void, ThunkConfig>(
 	async (_, { extra: { sdk } }) => {
 		const synthsMap = sdk.exchange.getSynthsMap()
 		const [{ tokensMap, tokenList }, synthSuspensions] = await Promise.all([
-			sdk.exchange.getOneInchTokens(),
-			sdk.exchange.getSynthSuspensions(),
+			proxy('exchange/one-inch-tokens'),
+			proxy('exchange/tynth-suspensions'),
 		])
 
 		return { synthsMap, tokensMap, tokenList, synthSuspensions }
@@ -163,17 +163,46 @@ export const resetCurrencyKeys = createAsyncThunk<any, void, ThunkConfig>(
 
 				// TODO: We should not have to do this.
 				// But we need the coingecko prices to generate the rates.
-				const coinGeckoPrices = await sdk.exchange.getCoingeckoPrices(
-					quoteCurrencyKey,
-					baseCurrencyKey
-				)
+				const coinGeckoPrices = await proxy.get('exchange/coingecko-prices', {
+					params: {
+						quoteCurrencyKey,
+						baseCurrencyKey,
+					},
+				})
 
 				;[baseFeeRate, rate, exchangeFeeRate, quotePriceRate, basePriceRate] = await Promise.all([
-					sdk.exchange.getBaseFeeRate(quoteCurrencyKey, baseCurrencyKey),
-					sdk.exchange.getRate(quoteCurrencyKey, baseCurrencyKey),
-					sdk.exchange.getExchangeFeeRate(quoteCurrencyKey, baseCurrencyKey),
-					sdk.exchange.getPriceRate(quoteCurrencyKey, txProvider, coinGeckoPrices),
-					sdk.exchange.getPriceRate(baseCurrencyKey, txProvider, coinGeckoPrices),
+					proxy.get('exchange/base-fee-rate', {
+						params: {
+							quoteCurrencyKey,
+							baseCurrencyKey,
+						},
+					}),
+					proxy.get('exchange/rate', {
+						params: {
+							quoteCurrencyKey,
+							baseCurrencyKey,
+						},
+					}),
+					proxy.get('exchange/exchange-fee-rate', {
+						params: {
+							quoteCurrencyKey,
+							baseCurrencyKey,
+						},
+					}),
+					proxy.get('exchange/price-rate', {
+						params: {
+							quoteCurrencyKey,
+							txProvider,
+							coinGeckoPrices,
+						},
+					}),
+					proxy.get('exchange/price-rate', {
+						params: {
+							baseCurrencyKey,
+							txProvider,
+							coinGeckoPrices,
+						},
+					}),
 				])
 
 				if (txProvider === 'synthetix') {
@@ -199,7 +228,12 @@ export const resetCurrencyKeys = createAsyncThunk<any, void, ThunkConfig>(
 					}
 				}
 
-				allowance = await sdk.exchange.checkAllowance(quoteCurrencyKey, baseCurrencyKey)
+				allowance = await proxy.get('exchange/check-allwance', {
+					params: {
+						quoteCurrencyKey,
+						baseCurrencyKey,
+					},
+				})
 			}
 		}
 
@@ -267,13 +301,17 @@ export const fetchFeeReclaimPeriod = createAsyncThunk<
 	},
 	void,
 	ThunkConfig
->('exchange/fetchFeeReclaimPeriod', async (_, { getState, extra: { sdk } }) => {
+>('exchange/fetchFeeReclaimPeriod', async (_, { getState }) => {
 	const {
 		exchange: { quoteCurrencyKey, baseCurrencyKey },
 	} = getState()
 	const [feeReclaimPeriod, settlementWaitingPeriod] = await Promise.all([
-		quoteCurrencyKey ? sdk.exchange.getFeeReclaimPeriod(quoteCurrencyKey) : 0,
-		baseCurrencyKey ? sdk.exchange.getFeeReclaimPeriod(baseCurrencyKey) : 0,
+		quoteCurrencyKey
+			? proxy.get('exchange/fee-reclaim-period', { params: { quoteCurrencyKey } })
+			: 0,
+		baseCurrencyKey
+			? proxy.get('exchange/fee-reclaim-period', { params: { quoteCurrencyKey } })
+			: 0,
 	])
 
 	return { feeReclaimPeriod, settlementWaitingPeriod }
@@ -303,13 +341,13 @@ export const submitSettle = createAsyncThunk<void, void, ThunkConfig>(
 
 export const fetchNumEntries = createAsyncThunk<number, void, ThunkConfig>(
 	'exchange/fetchNumEntries',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		const {
 			exchange: { baseCurrencyKey },
 		} = getState()
 
 		if (baseCurrencyKey) {
-			return sdk.exchange.getNumEntries(baseCurrencyKey)
+			return proxy.get('exchange/num-entries', { params: { baseCurrencyKey } })
 		}
 
 		return 0
@@ -366,22 +404,26 @@ export const updateBaseAmount = createAsyncThunk<any, void, ThunkConfig>(
 				const fee = baseAmountNoFee.mul(wei(exchangeFeeRate ?? 0))
 				baseAmount = truncateNumbers(baseAmountNoFee.sub(fee), DEFAULT_CRYPTO_DECIMALS)
 			} else if (!!quoteCurrencyKey && !!baseCurrencyKey && !!quoteAmount && !!txProvider) {
-				baseAmount = await sdk.exchange.getOneInchQuote(
-					baseCurrencyKey,
-					quoteCurrencyKey,
-					quoteAmount
-				)
+				baseAmount = await proxy.get('exchange/one-inch-quote', {
+					params: {
+						baseCurrencyKey,
+						quoteCurrencyKey,
+						quoteAmount,
+					},
+				})
 
 				if (txProvider === '1inch') {
 					const quoteAmountWei = toWei(quoteAmount)
 					const baseAmountWei = toWei(baseAmount)
 
-					slippagePercent = await sdk.exchange.getSlippagePercent(
-						quoteCurrencyKey,
-						baseCurrencyKey,
-						quoteAmountWei,
-						baseAmountWei
-					)
+					slippagePercent = await proxy.get('exchange/slippage-percent', {
+						params: {
+							quoteCurrencyKey,
+							baseCurrencyKey,
+							quoteAmountWei,
+							baseAmountWei,
+						},
+					})
 				}
 			}
 		}
