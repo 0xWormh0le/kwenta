@@ -38,6 +38,7 @@ import {
 	serializeV3Positions,
 } from 'utils/futures'
 import logError from 'utils/logError'
+import proxy from 'utils/proxy'
 
 import { selectMarketIndexPrice } from '../common/selectors'
 import {
@@ -70,6 +71,7 @@ import {
 } from './selectors'
 import { CrossMarginTradePreview } from './types'
 
+
 export const fetchCrossMarginMarketData = createAsyncThunk<void, void, ThunkConfig>(
 	'futures/fetchCrossMarginMarketData',
 	async (_, { dispatch }) => {
@@ -87,7 +89,7 @@ export const fetchV3Markets = createAsyncThunk<
 	const networkId = selectNetwork(getState())
 	if (!supportedNetwork || !CROSS_MARGIN_ENABLED) return
 	try {
-		const v3Markets = await sdk.perpsV3.getMarkets()
+		const v3Markets = await proxy.get('perps-v3/markets')
 
 		return { markets: v3Markets.map(serializeV3Market), networkId }
 	} catch (err) {
@@ -149,10 +151,12 @@ export const fetchCrossMarginPositions = createAsyncThunk<
 
 	if (!supportedNetwork || !accountId) return
 	try {
-		const positions = await sdk.perpsV3.getPositions(
-			accountId,
-			markets.map((m) => m.marketId)
-		)
+		const positions = await proxy('perps-v3/positions', {
+			params: {
+				accountId,
+				marketIds: markets.map((m) => m.marketId),
+			},
+		})
 
 		return { positions: serializeV3Positions(positions), account: accountId, network }
 	} catch (err) {
@@ -218,7 +222,12 @@ export const fetchCrossMarginOpenOrders = createAsyncThunk<
 	if (!accountId || !supportedNetwork || !markets.length || !wallet) return
 	try {
 		const marketIds = markets.map((market) => market.marketId)
-		const orders = await sdk.perpsV3.getPendingAsyncOrders(accountId, marketIds)
+		const orders = await proxy.get('perps-v3/pending-async-orders', {
+			params: {
+				accountId,
+				marketIds,
+			},
+		})
 		const orderDropped = existingOrders.length > orders.length
 		if (orderDropped) {
 			dispatch(fetchCrossMarginPositions())
@@ -247,11 +256,13 @@ export const fetchCrossMarginTradePreview = createAsyncThunk<
 	try {
 		if (!marketInfo) throw new Error('No market selected')
 		if (!marketInfo.settlementStrategies[0]) throw new Error('No settlement strategy found')
-		const preview = await sdk.perpsV3.getTradePreview(
-			marketInfo.marketId,
-			params.sizeDelta,
-			marketInfo.settlementStrategies[0]
-		)
+		const preview = await proxy.get('perps-v3/trade-preview', {
+			params: {
+				marketId: marketInfo.marketId,
+				size: params.sizeDelta,
+				settlementStrategy: marketInfo.settlementStrategies[0]
+			},
+		})
 		const priceImpact = preview.fillPrice.sub(marketPrice).div(marketPrice).abs()
 
 		const notional = preview.fillPrice.mul(params.sizeDelta).abs()
@@ -299,7 +310,11 @@ export const fetchAvailableMargin = createAsyncThunk<
 
 	if (!supportedNetwork || !wallet || !accountId) return
 	try {
-		const availableMargin = await sdk.perpsV3.getAvailableMargin(accountId)
+		const availableMargin = await proxy.get('perps-v3/available-margin', {
+			params: {
+				accountId,
+			},
+		})
 		return { wallet, network, availableMargin: availableMargin.toString() }
 	} catch (err) {
 		logError(err)
@@ -408,7 +423,11 @@ export const createPerpsV3Account = createAsyncThunk<
 		}
 
 		try {
-			const accountIds = await sdk.perpsV3.getPerpsV3AccountIds(wallet)
+			const accountIds = await proxy.get('perps-v3/perps-v3-account-ids', {
+				params: {
+					address: wallet,
+				},
+			})
 
 			if (accountIds.length > 0) {
 				// Already have an account, no need to create one

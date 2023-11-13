@@ -21,6 +21,7 @@ import { AppThunk } from 'state/store'
 import { ThunkConfig } from 'state/types'
 import { selectNetwork } from 'state/wallet/selectors'
 import { serializePositionHistory } from 'utils/futures'
+import proxy from 'utils/proxy'
 
 import { selectFuturesType } from './common/selectors'
 import { selectFuturesAccount } from './selectors'
@@ -115,7 +116,9 @@ export const fetchPositionHistoryForTrader = createAsyncThunk<
 		const networkId = selectNetwork(getState())
 		const futuresSupported = selectSmartMarginSupportedNetwork(getState())
 		if (!futuresSupported) return
-		const history = await sdk.futures.getPositionHistory(traderAddress, 'eoa')
+		const history = await proxy.get('futures/position-history', {
+			params: { address: traderAddress, type: 'eoa' },
+		})
 		return { history: serializePositionHistory(history), networkId, address: traderAddress }
 	} catch (err) {
 		notifyError('Failed to fetch history for trader ' + traderAddress, err)
@@ -160,9 +163,12 @@ export const fetchFundingRatesHistory = createAsyncThunk<
 	{ marketAsset: FuturesMarketAsset; period: Period },
 	ThunkConfig
 >('futures/fetchFundingRatesHistory', async ({ marketAsset, period }, { extra: { sdk } }) => {
-	const rates = await sdk.futures.getMarketFundingRatesHistory(
-		marketAsset,
-		PERIOD_IN_SECONDS[period]
-	)
+	const rates = await proxy('futures/market-funding-rates-history', {
+		params: {
+			marketAsset,
+			periodLength: PERIOD_IN_SECONDS[period],
+		},
+	})
+
 	return { marketAsset, rates }
 })
