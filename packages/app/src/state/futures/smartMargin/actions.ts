@@ -176,7 +176,7 @@ export const fetchSmartMarginBalanceInfo = createAsyncThunk<
 		const crossMarginSupported = selectSmartMarginSupportedNetwork(getState())
 		if (!account || !wallet || !crossMarginSupported) return
 		try {
-			const { data: balanceInfo } = await proxy.get('futures/smart-margin-baalnce-info', {
+			const { data: balanceInfo } = await proxy.get('futures/smart-margin-balance-info', {
 				params: {
 					walletAddress: wallet,
 					smartMarginAddress: account,
@@ -1560,7 +1560,7 @@ export const fetchFundingRatesHistory = createAsyncThunk<
 	FuturesMarketAsset,
 	ThunkConfig
 >('futures/fetchFundingRatesHistory', async (marketAsset) => {
-	const { data: rates } = await proxy.get('futures/get-market-funding-rates-history', {
+	const { data: rates } = await proxy.get('futures/market-funding-rates-history', {
 		params: {
 			marketAsset,
 		},

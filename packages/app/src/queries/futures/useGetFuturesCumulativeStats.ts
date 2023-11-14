@@ -17,8 +17,10 @@ const useGetFuturesCumulativeStats = (options?: UseQueryOptions<FuturesCumulativ
 	return useQuery<FuturesCumulativeStats | null>(
 		QUERY_KEYS.Futures.TotalTrades(network?.id as NetworkId),
 		async () => {
-			const { data } = await proxy.post('futures/cumulative-stats', {
-				chain: homepage ? 1 : network?.id,
+			const { data } = await proxy.get('futures/cumulative-stats', {
+				params: {
+					chain: homepage ? 1 : network?.id,
+				},
 			})
 
 			return data

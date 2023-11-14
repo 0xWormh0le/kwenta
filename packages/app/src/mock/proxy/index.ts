@@ -1,4 +1,16 @@
 import mock from './adapter'
 import './ens'
+import './futures'
+import './candles'
+import './exchange'
+import './balance'
+import './system'
+import './synths'
+import './kwentaTokens'
+import './perpsV3'
+import './stats'
+import './prices'
+import './referrals'
+import './stakingMigration'
 
 mock.onAny().passThrough()

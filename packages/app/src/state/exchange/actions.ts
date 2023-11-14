@@ -241,7 +241,7 @@ export const resetCurrencyKeys = createAsyncThunk<any, void, ThunkConfig>(
 				}
 
 				allowance = await proxy
-					.get('exchange/check-allwance', {
+					.get('exchange/check-allowance', {
 						params: {
 							quoteCurrencyKey,
 							baseCurrencyKey,

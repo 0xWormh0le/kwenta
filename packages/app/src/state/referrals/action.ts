@@ -21,9 +21,9 @@ import {
 import { ThunkConfig } from 'state/types'
 import { selectWallet } from 'state/wallet/selectors'
 import logError from 'utils/logError'
+import proxy from 'utils/proxy'
 
 import { setMintedBoostNft } from './reducer'
-import proxy from 'utils/proxy'
 
 export const mintBoostNft = createAsyncThunk<void, string, ThunkConfig>(
 	'referrals/mintBoostNft',
