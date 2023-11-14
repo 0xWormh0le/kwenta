@@ -28,6 +28,8 @@ import { themes } from 'styles/theme'
 import { IGNORE_ERRORS } from 'utils/logError'
 import { getDesignTokens } from 'utils/theme'
 
+import 'mock/proxy'
+
 import 'styles/main.css'
 import 'slick-carousel/slick/slick.css'
 import 'slick-carousel/slick/slick-theme.css'
