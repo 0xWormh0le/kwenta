@@ -117,10 +117,12 @@ export const fetchUnregisteredVestingEntryIDs = createAsyncThunk<
 
 		const registeredVestingEntryIDs = (
 			await proxy
-				.get('staking-migration/registered-vesting-entry-ids')
+				.get<string[]>('staking-migration/registered-vesting-entry-ids')
 				.then((response) => response.data)
 		).map((id) => Number(id))
-		const { data: vestingEntryIDs } = await proxy.get('staking-migration/vesting-entry-ids')
+		const { data: vestingEntryIDs } = await proxy.get<number[]>(
+			'staking-migration/vesting-entry-ids'
+		)
 		const unregisteredVestingEntryIDs = vestingEntryIDs.filter(
 			(id) => !registeredVestingEntryIDs.includes(id)
 		)
@@ -144,7 +146,7 @@ export const fetchRegisteredVestingEntryIDs = createAsyncThunk<
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const { data: registeredVestingEntryIDs } = await proxy.get(
+		const { data: registeredVestingEntryIDs } = await proxy.get<string[]>(
 			'staking-migration/registered-vesting-entry-ids'
 		)
 
@@ -163,12 +165,12 @@ export const fetchUnvestedRegisteredEntryIDs = createAsyncThunk<
 	{ unvestedRegisteredEntryIDs: number[]; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchUnvestedRegisteredEntryIDs', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchUnvestedRegisteredEntryIDs', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const { data: registeredVestingEntryIDs } = await proxy.get(
+		const { data: registeredVestingEntryIDs } = await proxy.get<string[]>(
 			'staking-migration/registered-vesting-entry-ids'
 		)
 		const { data: vestingEntryIDs } = await proxy.get('staking-migration/vesting-entry-ids')
@@ -195,9 +197,9 @@ export const fetchUnmigratedRegisteredEntryIDs = createAsyncThunk<
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const { data: registeredVestingEntryIDs } = await proxy.get(
-			'staking-migration/registered-vesting-schedules'
-		)
+		const { data: registeredVestingEntryIDs } = await proxy.get<
+			{ migrated: boolean; entryID: string }[]
+		>('staking-migration/registered-vesting-schedules')
 		const unmigratedRegisteredEntryIDs = registeredVestingEntryIDs
 			.filter((schedule) => !schedule.migrated)
 			.map(({ entryID }) => Number(entryID))

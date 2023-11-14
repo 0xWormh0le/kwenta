@@ -137,13 +137,13 @@ export const fetchMarketsV2 = createAsyncThunk<
 	{ markets: PerpsMarketV2<string>[]; networkId: NetworkId } | undefined,
 	void,
 	ThunkConfig
->('futures/fetchMarkets', async (_, { getState, extra: { sdk } }) => {
+>('futures/fetchMarkets', async (_, { getState }) => {
 	const supportedNetwork = selectSmartMarginSupportedNetwork(getState())
 	const networkId = selectNetwork(getState())
 
 	if (!supportedNetwork) return
 	try {
-		const { data: markets } = await proxy.get('futures/markets')
+		const { data: markets } = await proxy.get<PerpsMarketV2[]>('futures/markets')
 		// apply overrides
 		const overrideMarkets = markets.map((m) => {
 			return marketOverrides[m.marketKey]
@@ -205,7 +205,7 @@ export const fetchSmartMarginPositions = createAsyncThunk<
 
 	if (!account || !supportedNetwork) return
 	try {
-		const { data: positions } = await proxy.post('futures/futures-positions', {
+		const { data: positions } = await proxy.post<PerpsV2Position[]>('futures/futures-positions', {
 			address: account,
 			futuresMarkets: markets.map((m) => ({
 				asset: m.asset,

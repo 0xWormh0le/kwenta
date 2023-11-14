@@ -1,4 +1,4 @@
-import { TransactionStatus } from '@kwenta/sdk/types'
+import { EscrowData, TransactionStatus } from '@kwenta/sdk/types'
 import { createAsyncThunk } from '@reduxjs/toolkit'
 import { BigNumber } from 'ethers'
 
@@ -162,14 +162,14 @@ export const redeemToken = createAsyncThunk<void, 'vKwenta' | 'veKwenta', ThunkC
 
 export const fetchEscrowData = createAsyncThunk<EscrowBalance, void, ThunkConfig>(
 	'staking/fetchEscrowData',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			const supportedNetwork = selectStakingSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_ESCROW_BALANCE
 
 			const { escrowData, totalVestable } = await proxy
-				.get('kwenta-token/escrow-data')
+				.get<{ escrowData: EscrowData[]; totalVestable: number }>('kwenta-token/escrow-data')
 				.then((response) => response.data)
 
 			return {
@@ -191,14 +191,14 @@ export const fetchEscrowData = createAsyncThunk<EscrowBalance, void, ThunkConfig
 
 export const fetchEscrowV2Data = createAsyncThunk<EscrowBalance, void, ThunkConfig>(
 	'staking/fetchEscrowV2Data',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			const supportedNetwork = selectStakingSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_ESCROW_BALANCE
 
 			const { escrowData, totalVestable } = await proxy
-				.get('kwenta-token/escrow-v2-data')
+				.get<{ escrowData: EscrowData[]; totalVestable: number }>('kwenta-token/escrow-v2-data')
 				.then((response) => response.data)
 
 			return {
