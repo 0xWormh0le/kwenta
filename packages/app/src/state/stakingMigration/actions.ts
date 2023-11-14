@@ -11,6 +11,7 @@ import { selectWallet } from 'state/wallet/selectors'
 import logError from 'utils/logError'
 
 import { MigrationPeriod } from './types'
+import proxy from 'utils/proxy'
 
 export const registerEntries = createAsyncThunk<void, number[], ThunkConfig>(
 	'stakingMigration/registerEntries',
@@ -115,9 +116,11 @@ export const fetchUnregisteredVestingEntryIDs = createAsyncThunk<
 		if (!wallet) throw new Error('Wallet not connected')
 
 		const registeredVestingEntryIDs = (
-			await sdk.stakingMigration.getRegisteredVestingEntryIDs()
+			await proxy
+				.get('staking-migration/registered-vesting-entry-ids')
+				.then((response) => response.data)
 		).map((id) => Number(id))
-		const vestingEntryIDs = await sdk.stakingMigration.getVestingEntryIDs()
+		const { data: vestingEntryIDs } = await proxy.get('staking-migration/vesting-entry-ids')
 		const unregisteredVestingEntryIDs = vestingEntryIDs.filter(
 			(id) => !registeredVestingEntryIDs.includes(id)
 		)
@@ -136,12 +139,14 @@ export const fetchRegisteredVestingEntryIDs = createAsyncThunk<
 	{ registeredVestingEntryIDs: number[]; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchRegisteredVestingEntryIDs', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchRegisteredVestingEntryIDs', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const registeredVestingEntryIDs = await sdk.stakingMigration.getRegisteredVestingEntryIDs()
+		const { data: registeredVestingEntryIDs } = await proxy.get(
+			'staking-migration/registered-vesting-entry-ids'
+		)
 
 		return {
 			registeredVestingEntryIDs: registeredVestingEntryIDs.map((id) => Number(id)),
@@ -163,8 +168,10 @@ export const fetchUnvestedRegisteredEntryIDs = createAsyncThunk<
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const registeredVestingEntryIDs = await sdk.stakingMigration.getRegisteredVestingEntryIDs()
-		const vestingEntryIDs = await sdk.stakingMigration.getVestingEntryIDs()
+		const { data: registeredVestingEntryIDs } = await proxy.get(
+			'staking-migration/registered-vesting-entry-ids'
+		)
+		const { data: vestingEntryIDs } = await proxy.get('staking-migration/vesting-entry-ids')
 		const unvestedRegisteredEntryIDs = registeredVestingEntryIDs
 			.map((id) => Number(id))
 			.filter((id) => vestingEntryIDs.includes(id))
@@ -183,12 +190,14 @@ export const fetchUnmigratedRegisteredEntryIDs = createAsyncThunk<
 	{ unmigratedRegisteredEntryIDs: number[]; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchUnmigratedRegisteredEntryIDs', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchUnmigratedRegisteredEntryIDs', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const registeredVestingEntryIDs = await sdk.stakingMigration.getRegisteredVestingSchedules()
+		const { data: registeredVestingEntryIDs } = await proxy.get(
+			'staking-migration/registered-vesting-schedules'
+		)
 		const unmigratedRegisteredEntryIDs = registeredVestingEntryIDs
 			.filter((schedule) => !schedule.migrated)
 			.map(({ entryID }) => Number(entryID))
@@ -207,11 +216,13 @@ export const fetchMigrationDeadline = createAsyncThunk<
 	{ migrationPeriod: MigrationPeriod; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchMigrationDeadline', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchMigrationDeadline', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
-		const { startBN, endBN } = await sdk.stakingMigration.getMigrationDeadline()
+		const { startBN, endBN } = await proxy
+			.get('staking-migration/migration-deadline')
+			.then((response) => response.data)
 		return {
 			migrationPeriod: {
 				start: startBN.toNumber(),
@@ -228,12 +239,12 @@ export const fetchMigrationDeadline = createAsyncThunk<
 
 export const fetchToPay = createAsyncThunk<{ toPay: string; wallet: string }, void, ThunkConfig>(
 	'stakingMigration/fetchToPay',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			if (!wallet) throw new Error('Wallet not connected')
 
-			const toPay = await sdk.stakingMigration.getToPayByUser()
+			const { data: toPay } = await proxy.get('staking-migration/to-pay-by-user')
 			return { toPay: toPay.toString(), wallet }
 		} catch (err) {
 			logError(err)
@@ -247,12 +258,14 @@ export const fetchEscrowMigratorAllowance = createAsyncThunk<
 	{ escrowMigratorAllowance: string; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchEscrowMigratorAllowance', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchEscrowMigratorAllowance', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const escrowMigratorAllowance = await sdk.stakingMigration.getEscrowMigratorAllowance()
+		const { data: escrowMigratorAllowance } = await proxy.get(
+			'staking-migration/escrow-migrator-allowance'
+		)
 
 		return {
 			escrowMigratorAllowance: escrowMigratorAllowance.toString(),
@@ -269,12 +282,14 @@ export const fetchTotalEscrowUnmigrated = createAsyncThunk<
 	{ totalEscrowUnmigrated: string; wallet: string },
 	void,
 	ThunkConfig
->('stakingMigration/fetchTotalEscrowUnmigrated', async (_, { getState, extra: { sdk } }) => {
+>('stakingMigration/fetchTotalEscrowUnmigrated', async (_, { getState }) => {
 	try {
 		const wallet = selectWallet(getState())
 		if (!wallet) throw new Error('Wallet not connected')
 
-		const totalEscrowUnmigrated = await sdk.stakingMigration.getTotalEscrowUnmigrated()
+		const { data: totalEscrowUnmigrated } = await proxy.get(
+			'staking-migration/total-escrow-unmigrated'
+		)
 
 		return {
 			totalEscrowUnmigrated: totalEscrowUnmigrated.toString(),

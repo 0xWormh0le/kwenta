@@ -6,6 +6,7 @@ import { selectPrices } from 'state/prices/selectors'
 import { AppThunk } from 'state/store'
 import { ThunkConfig } from 'state/types'
 import { getPricesInfo } from 'utils/prices'
+import proxy from 'utils/proxy'
 
 import { setOffChainPrices, setOnChainPrices } from './reducer'
 
@@ -24,15 +25,17 @@ export const fetchPreviousDayPrices = createAsyncThunk<
 	SynthPrice[],
 	boolean | undefined,
 	ThunkConfig
->('prices/fetchPreviousDayPrices', async (mainnet, { getState, extra: { sdk } }) => {
+>('prices/fetchPreviousDayPrices', async (mainnet, { getState }) => {
 	try {
 		const prices = selectPrices(getState())
 		const marketAssets = Object.keys(prices)
 
-		const laggedPrices = await sdk.prices.getPreviousDayPrices(
-			marketAssets,
-			mainnet ? 10 : undefined
-		)
+		const { data: laggedPrices } = await proxy.get('prices/previous-day-prices', {
+			params: {
+				marketAssets,
+				networkId: mainnet,
+			},
+		})
 
 		return laggedPrices
 	} catch (err) {

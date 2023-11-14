@@ -23,6 +23,7 @@ import { selectWallet } from 'state/wallet/selectors'
 import logError from 'utils/logError'
 
 import { setMintedBoostNft } from './reducer'
+import proxy from 'utils/proxy'
 
 export const mintBoostNft = createAsyncThunk<void, string, ThunkConfig>(
 	'referrals/mintBoostNft',
@@ -91,13 +92,15 @@ export const createNewReferralCode = createAsyncThunk<void, string, ThunkConfig>
 
 export const fetchUnmintedBoostNftForCode = createAsyncThunk<ReferralTiers, string, ThunkConfig>(
 	'referrals/fetchUnmintedBoostNftForCode',
-	async (code, { getState, extra: { sdk } }) => {
+	async (code, { getState }) => {
 		const supportedNetwork = selectTradingRewardsSupportedNetwork(getState())
 
 		try {
 			if (!supportedNetwork)
 				throw new Error('Boost NFT is unsupported on this network. Please switch to Optimism.')
-			return await sdk.referrals.getTierByReferralCode(code)
+			return await proxy
+				.get('referrals/tier-by-referral-code', { params: { code } })
+				.then((response) => response.data)
 		} catch (err) {
 			logError(err)
 			notifyError('Failed to fetch Boost NFT for referral code.', err)
@@ -108,10 +111,10 @@ export const fetchUnmintedBoostNftForCode = createAsyncThunk<ReferralTiers, stri
 
 export const checkSelfReferredByCode = createAsyncThunk<boolean, string, ThunkConfig>(
 	'referrals/fetchReferrerByCode',
-	async (code, { getState, extra: { sdk } }) => {
+	async (code, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
-			const owner = await sdk.referrals.getReferrerByCode(code)
+			const { data: owner } = await proxy.get('referrals/referrer-by-code', { params: { code } })
 			return wallet && owner ? wallet.toLowerCase() === owner.toLowerCase() : false
 		} catch (err) {
 			logError(err)
@@ -123,11 +126,13 @@ export const checkSelfReferredByCode = createAsyncThunk<boolean, string, ThunkCo
 
 export const fetchBoostNftForAccount = createAsyncThunk<ReferralTiers, void, ThunkConfig>(
 	'referrals/fetchTraderNftForAccount',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			if (!wallet) return ReferralTiers.INVALID
-			return await sdk.referrals.getBoostNftTierByHolder(wallet)
+			return await proxy
+				.get('referrals/boost-nft-tier-by-holder', { params: { account: wallet } })
+				.then((response) => response.data)
 		} catch (err) {
 			logError(err)
 			notifyError('Failed to fetch Boost NFT for account', err)
@@ -138,11 +143,15 @@ export const fetchBoostNftForAccount = createAsyncThunk<ReferralTiers, void, Thu
 
 export const fetchBoostNftMinted = createAsyncThunk<boolean, void, ThunkConfig>(
 	'referrals/fetchBoostNftMinted',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			if (!wallet) return false
-			return await sdk.referrals.checkNftMintedForAccount(wallet)
+			return await proxy
+				.get('referrals/check-nft-minted-for-account', {
+					params: { account: wallet },
+				})
+				.then((response) => response.data)
 		} catch (err) {
 			logError(err)
 			notifyError('Failed to check Boost NFT for account', err)
@@ -165,15 +174,26 @@ export const fetchReferralEpoch = createAsyncThunk<ReferralsRewardsPerEpoch[], v
 					.slice(REFERRAL_PROGRAM_START_EPOCH)
 					.sort((a, b) => Number(b.period) - Number(a.period))
 					.map(async ({ period, start, end }) => {
-						const referralEpoch = await sdk.referrals.getCumulativeStatsByReferrerAndEpochTime(
-							wallet,
-							start,
-							end
+						const { data: referralEpoch } = await proxy.get(
+							'referrals/cumulative-stats-by-referrer-and-epoch-time',
+							{
+								params: {
+									account: wallet,
+									start,
+									end,
+								},
+							}
 						)
 
 						const kwentaRewards =
 							period !== Number(epochPeriod)
-								? await sdk.kwentaToken.getKwentaRewardsByEpoch(period)
+								? await proxy
+										.get('kwenta-token/kwenta-rewards-by-epoch', {
+											params: {
+												epochPeriod: period,
+											},
+										})
+										.then((response) => response.data)
 								: wei(0)
 						const referralVolume = calculateTotal(referralEpoch, 'referralVolume')
 						const referredCount = calculateTotal(referralEpoch, 'referredCount')
@@ -200,11 +220,15 @@ export const fetchReferralEpoch = createAsyncThunk<ReferralsRewardsPerEpoch[], v
 
 export const fetchReferralNftForAccount = createAsyncThunk<ReferralTiers, void, ThunkConfig>(
 	'referrals/fetchReferralNft',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			if (!wallet) return ReferralTiers.BRONZE
-			const tier = await sdk.referrals.getReferralNftTierByReferrer(wallet)
+			const { data: tier } = await proxy.get('referrals/referral-nft-tier-by-referrer', {
+				params: {
+					account: wallet,
+				},
+			})
 			return tier ?? ReferralTiers.BRONZE
 		} catch (err) {
 			logError(err)
@@ -216,11 +240,15 @@ export const fetchReferralNftForAccount = createAsyncThunk<ReferralTiers, void, 
 
 export const fetchReferralScoreForAccount = createAsyncThunk<number, void, ThunkConfig>(
 	'referrals/fetchReferralScoreForAccount',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			if (!wallet) return 0
-			const score = await sdk.referrals.getReferralScoreByReferrer(wallet)
+			const { data: score } = await proxy.get('referrals/referral-score-by-referrer', {
+				params: {
+					account: wallet,
+				},
+			})
 			const maxScore = REFFERAL_TIERS[ReferralTiers.GOLD].threshold
 			return Math.min(maxScore, wei(score).toNumber()) ?? 0
 		} catch (err) {
@@ -233,12 +261,19 @@ export const fetchReferralScoreForAccount = createAsyncThunk<number, void, Thunk
 
 export const fetchReferralCodes = createAsyncThunk<ReferralsRewardsPerCode[], void, ThunkConfig>(
 	'referrals/fetchReferralCodes',
-	async (_, { getState, extra: { sdk } }) => {
+	async (_, { getState }) => {
 		try {
 			const wallet = selectWallet(getState())
 			const period = Number(selectEpochPeriod(getState()))
 			if (!wallet || !period) return []
-			return await sdk.referrals.getCumulativeStatsByReferrerAndEpoch(wallet, period)
+			return await proxy
+				.get('referrals/cumulative-stats-by-referrer-and-epoch', {
+					params: {
+						account: wallet,
+						period,
+					},
+				})
+				.then((response) => response.data)
 		} catch (err) {
 			logError(err)
 			notifyError('Failed to fetch cumulative stats by referral codes', err)

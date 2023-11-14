@@ -89,7 +89,7 @@ export const fetchV3Markets = createAsyncThunk<
 	const networkId = selectNetwork(getState())
 	if (!supportedNetwork || !CROSS_MARGIN_ENABLED) return
 	try {
-		const v3Markets = await proxy.get('perps-v3/markets')
+		const { data: v3Markets } = await proxy.get('perps-v3/markets')
 
 		return { markets: v3Markets.map(serializeV3Market), networkId }
 	} catch (err) {
@@ -151,7 +151,7 @@ export const fetchCrossMarginPositions = createAsyncThunk<
 
 	if (!supportedNetwork || !accountId) return
 	try {
-		const positions = await proxy('perps-v3/positions', {
+		const { data: positions } = await proxy.get('perps-v3/positions', {
 			params: {
 				accountId,
 				marketIds: markets.map((m) => m.marketId),
@@ -222,7 +222,7 @@ export const fetchCrossMarginOpenOrders = createAsyncThunk<
 	if (!accountId || !supportedNetwork || !markets.length || !wallet) return
 	try {
 		const marketIds = markets.map((market) => market.marketId)
-		const orders = await proxy.get('perps-v3/pending-async-orders', {
+		const { data: orders } = await proxy.get('perps-v3/pending-async-orders', {
 			params: {
 				accountId,
 				marketIds,
@@ -256,7 +256,7 @@ export const fetchCrossMarginTradePreview = createAsyncThunk<
 	try {
 		if (!marketInfo) throw new Error('No market selected')
 		if (!marketInfo.settlementStrategies[0]) throw new Error('No settlement strategy found')
-		const preview = await proxy.get('perps-v3/trade-preview', {
+		const { data: preview } = await proxy.get('perps-v3/trade-preview', {
 			params: {
 				marketId: marketInfo.marketId,
 				size: params.sizeDelta,
@@ -310,7 +310,7 @@ export const fetchAvailableMargin = createAsyncThunk<
 
 	if (!supportedNetwork || !wallet || !accountId) return
 	try {
-		const availableMargin = await proxy.get('perps-v3/available-margin', {
+		const { data: availableMargin } = await proxy.get('perps-v3/available-margin', {
 			params: {
 				accountId,
 			},
@@ -423,7 +423,7 @@ export const createPerpsV3Account = createAsyncThunk<
 		}
 
 		try {
-			const accountIds = await proxy.get('perps-v3/perps-v3-account-ids', {
+			const { data: accountIds } = await proxy.get('perps-v3/perps-v3-account-ids', {
 				params: {
 					address: wallet,
 				},

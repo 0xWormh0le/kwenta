@@ -40,6 +40,7 @@ import {
 	TransferEscrowEntriesInput,
 	TransferEscrowEntryInput,
 } from './types'
+import proxy from 'utils/proxy'
 
 export const fetchStakingData = createAsyncThunk<StakingAction, void, ThunkConfig>(
 	'staking/fetchStakingData',
@@ -63,7 +64,7 @@ export const fetchStakingData = createAsyncThunk<StakingAction, void, ThunkConfi
 				epochPeriod,
 				veKwentaBalance,
 				veKwentaAllowance,
-			} = await sdk.kwentaToken.getStakingData()
+			} = await proxy.get('kwenta-token/staking-data').then((response) => response.data)
 
 			return {
 				escrowedKwentaBalance: rewardEscrowBalance.toString(),
@@ -104,7 +105,7 @@ export const fetchStakingV2Data = createAsyncThunk<StakingActionV2, void, ThunkC
 				totalStakedBalance,
 				stakedResetTime,
 				kwentaStakingV2Allowance,
-			} = await sdk.kwentaToken.getStakingV2Data()
+			} = await proxy.get('kwenta-token/staking-v2-data').then((response) => response.data)
 
 			return {
 				escrowedKwentaBalance: rewardEscrowBalance.toString(),
@@ -167,7 +168,9 @@ export const fetchEscrowData = createAsyncThunk<EscrowBalance, void, ThunkConfig
 			const supportedNetwork = selectStakingSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_ESCROW_BALANCE
 
-			const { escrowData, totalVestable } = await sdk.kwentaToken.getEscrowData()
+			const { escrowData, totalVestable } = await proxy
+				.get('kwenta-token/escrow-data')
+				.then((response) => response.data)
 
 			return {
 				escrowData: escrowData.map((e) => ({
@@ -194,7 +197,9 @@ export const fetchEscrowV2Data = createAsyncThunk<EscrowBalance, void, ThunkConf
 			const supportedNetwork = selectStakingSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_ESCROW_BALANCE
 
-			const { escrowData, totalVestable } = await sdk.kwentaToken.getEscrowV2Data()
+			const { escrowData, totalVestable } = await proxy
+				.get('kwenta-token/escrow-v2-data')
+				.then((response) => response.data)
 
 			return {
 				escrowData: escrowData.map((e) => ({
@@ -221,8 +226,9 @@ export const fetchEstimatedRewards = createAsyncThunk<EstimatedRewards, void, Th
 			const supportedNetwork = selectStakingSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_ESTIMATED_REWARDS
 
-			const { estimatedKwentaRewards, estimatedOpRewards } =
-				await sdk.kwentaToken.getEstimatedRewards()
+			const { estimatedKwentaRewards, estimatedOpRewards } = await proxy
+				.get('kwenta-token/estimated-rewards')
+				.then((response) => response.data)
 			return {
 				estimatedKwentaRewards: estimatedKwentaRewards.toString(),
 				estimatedOpRewards: estimatedOpRewards.toString(),
@@ -442,19 +448,55 @@ export const fetchClaimableRewards = createAsyncThunk<ClaimableRewards, void, Th
 			const supportedNetwork = selectTradingRewardsSupportedNetwork(getState())
 			if (!wallet || !supportedNetwork) return ZERO_CLAIMABLE_REWARDS
 
-			const { epochPeriod } = await sdk.kwentaToken.getStakingData()
+			const { data: epochPeriod } = await proxy.get('kwenta-token/staking-data')
 
-			const { claimableRewards: claimableKwentaRewards, totalRewards: kwentaRewards } =
-				await sdk.kwentaToken.getClaimableAllRewards(epochPeriod, false, false, false, 20)
+			const { claimableRewards: claimableKwentaRewards, totalRewards: kwentaRewards } = await proxy
+				.get('kwenta-token/claimable-all-rewards', {
+					params: {
+						epochPeriod,
+						isStakingV2: false,
+						isOp: false,
+						isSnx: false,
+						cutoffPeriod: 20,
+					},
+				})
+				.then((response) => response.data)
 
 			const { claimableRewards: claimableKwentaRewardsV2, totalRewards: kwentaRewardsV2 } =
-				await sdk.kwentaToken.getClaimableAllRewards(epochPeriod, true, false, false)
+				await proxy
+					.get('kwenta-token/claimable-all-rewards', {
+						params: {
+							epochPeriod,
+							isStakingV2: true,
+							isOp: false,
+							isSnx: false,
+						},
+					})
+					.then((response) => response.data)
 
-			const { claimableRewards: claimableOpRewards, totalRewards: opRewards } =
-				await sdk.kwentaToken.getClaimableAllRewards(epochPeriod, false, true, false, 11)
+			const { claimableRewards: claimableOpRewards, totalRewards: opRewards } = await proxy
+				.get('kwenta-token/claimable-all-rewards', {
+					params: {
+						epochPeriod,
+						isStakingV2: false,
+						isOp: true,
+						isSnx: false,
+						cutoffPeriod: 11,
+					},
+				})
+				.then((response) => response.data)
 
-			const { claimableRewards: claimableSnxOpRewards, totalRewards: snxOpRewards } =
-				await sdk.kwentaToken.getClaimableAllRewards(epochPeriod, false, true, true, 11)
+			const { claimableRewards: claimableSnxOpRewards, totalRewards: snxOpRewards } = await proxy
+				.get('kwenta-token/claimable-all-rewards', {
+					params: {
+						epochPeriod,
+						isStakingV2: false,
+						isOp: true,
+						isSnx: true,
+						cutoffPeriod: 11,
+					},
+				})
+				.then((response) => response.data)
 
 			return {
 				claimableKwentaRewards,

@@ -116,9 +116,11 @@ export const fetchPositionHistoryForTrader = createAsyncThunk<
 		const networkId = selectNetwork(getState())
 		const futuresSupported = selectSmartMarginSupportedNetwork(getState())
 		if (!futuresSupported) return
-		const history = await proxy.get('futures/position-history', {
-			params: { address: traderAddress, type: 'eoa' },
-		})
+		const history = await proxy
+			.get('futures/position-history', {
+				params: { address: traderAddress, type: 'eoa' },
+			})
+			.then((response) => response.data)
 		return { history: serializePositionHistory(history), networkId, address: traderAddress }
 	} catch (err) {
 		notifyError('Failed to fetch history for trader ' + traderAddress, err)
@@ -163,12 +165,14 @@ export const fetchFundingRatesHistory = createAsyncThunk<
 	{ marketAsset: FuturesMarketAsset; period: Period },
 	ThunkConfig
 >('futures/fetchFundingRatesHistory', async ({ marketAsset, period }, { extra: { sdk } }) => {
-	const rates = await proxy('futures/market-funding-rates-history', {
-		params: {
-			marketAsset,
-			periodLength: PERIOD_IN_SECONDS[period],
-		},
-	})
+	const rates = await proxy
+		.get('futures/market-funding-rates-history', {
+			params: {
+				marketAsset,
+				periodLength: PERIOD_IN_SECONDS[period],
+			},
+		})
+		.then((response) => response.data)
 
 	return { marketAsset, rates }
 })
