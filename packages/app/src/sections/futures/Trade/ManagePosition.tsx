@@ -1,3 +1,4 @@
+import { SignInButton as ClerkSignIn, SignOutButton as ClerkSignOut, useUser } from '@clerk/nextjs'
 import { ZERO_WEI } from '@kwenta/sdk/constants'
 import { MIN_MARGIN_AMOUNT } from '@kwenta/sdk/constants'
 import { FuturesMarginType } from '@kwenta/sdk/types'
@@ -228,21 +229,39 @@ const ManagePosition: React.FC = () => {
 		marketInfo?.appMaxLeverage,
 	])
 
+	const { isSignedIn, user, isLoaded } = useUser()
+
 	return (
 		<>
 			<div>
 				<ManagePositionContainer>
-					<PlaceOrderButton
-						data-testid="trade-panel-submit-button"
-						noOutline
-						fullWidth
-						loading={previewStatus.status === FetchStatus.Loading}
-						variant={otherReason ? 'yellow' : leverageSide}
-						disabled={!otherReason && !!placeOrderDisabledReason}
-						onClick={otherReason?.action ?? onSubmit}
-					>
-						{t(otherReason?.key ?? placeOrderTranslationKey)}
-					</PlaceOrderButton>
+					{isSignedIn && isLoaded && user ? (
+						<ClerkSignOut>
+							<PlaceOrderButton
+								data-testid="trade-panel-submit-button"
+								noOutline
+								fullWidth
+								loading={previewStatus.status === FetchStatus.Loading}
+								variant="yellow"
+							>
+								{/* todo: need to use t() */}
+								Sign out
+							</PlaceOrderButton>
+						</ClerkSignOut>
+					) : (
+						<ClerkSignIn>
+							<PlaceOrderButton
+								data-testid="trade-panel-submit-button"
+								noOutline
+								fullWidth
+								loading={previewStatus.status === FetchStatus.Loading}
+								variant="yellow"
+							>
+								{/* todo: need to use t() */}
+								Sign in with Clerk
+							</PlaceOrderButton>
+						</ClerkSignIn>
+					)}
 				</ManagePositionContainer>
 			</div>
 

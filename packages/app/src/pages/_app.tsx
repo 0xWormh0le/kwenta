@@ -1,3 +1,4 @@
+import { ClerkProvider } from '@clerk/nextjs'
 import { createTheme, MuiThemeProvider } from '@material-ui/core'
 import { darkTheme, lightTheme, RainbowKitProvider } from '@rainbow-me/rainbowkit'
 import * as Sentry from '@sentry/browser'
@@ -122,15 +123,18 @@ const App: FC<AppProps> = (props) => {
 				<meta name="twitter:url" content="https://kwenta.eth.limo" />
 				<link rel="icon" href="/images/favicon.svg" />
 			</Head>
-			<Provider store={store}>
-				<QueryClientProvider client={new QueryClient()}>
-					<WagmiConfig client={wagmiClient}>
-						<Connector.Provider>
-							<InnerApp {...props} />
-						</Connector.Provider>
-					</WagmiConfig>
-				</QueryClientProvider>
-			</Provider>
+
+			<ClerkProvider>
+				<Provider store={store}>
+					<QueryClientProvider client={new QueryClient()}>
+						<WagmiConfig client={wagmiClient}>
+							<Connector.Provider>
+								<InnerApp {...props} />
+							</Connector.Provider>
+						</WagmiConfig>
+					</QueryClientProvider>
+				</Provider>
+			</ClerkProvider>
 		</>
 	)
 }
