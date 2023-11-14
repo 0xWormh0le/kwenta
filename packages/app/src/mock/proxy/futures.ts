@@ -8,7 +8,7 @@ mock.onGet('futures/cumulative-stats').reply(200, {
 	totalLiquidations: '0',
 })
 
-mock.onGet('futures/trades').reply(200, [])
+mock.onPost('futures/trades').reply(200, [])
 
 mock.onGet('futures/aggregate-stats').reply(200, {})
 

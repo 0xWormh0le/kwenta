@@ -9,6 +9,7 @@ import { setConnectionError } from 'state/prices/reducer'
 import sdk from 'state/sdk'
 import { selectNetwork, selectWallet } from 'state/wallet/selectors'
 import { serializePrices } from 'utils/futures'
+import proxy from 'utils/proxy'
 
 import { checkSynthetixStatus } from './actions'
 
@@ -38,10 +39,21 @@ export function useAppData(ready: boolean) {
 	})
 
 	useEffect(() => {
+		let timer: NodeJS.Timeout
+
 		if (ready) {
-			sdk.prices.startPriceUpdates(15000)
+			timer = setInterval(async () => {
+				const { data } = await proxy.get('prices/onchain-prices')
+				dispatch(updatePrices(serializePrices(data), 'on_chain'))
+			}, 15000)
 		}
-	}, [ready])
+
+		return () => {
+			if (timer) {
+				clearInterval(timer)
+			}
+		}
+	}, [ready, dispatch])
 
 	useEffect(() => {
 		sdk.prices.onPricesUpdated(({ prices, type, source }) => {
