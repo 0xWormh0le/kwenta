@@ -1,3 +1,5 @@
+import { MOCK_TRADE_PREVIEW, SDK_MARKETS } from '../../../testing/unit/mocks/data/futures'
+
 import mock from './adapter'
 
 mock.onGet('futures/cumulative-stats').reply(200, {
@@ -16,7 +18,7 @@ mock.onGet('futures/position-history').reply(200, [])
 
 mock.onGet('futures/market-funding-rates-history').reply(200, [])
 
-mock.onGet('futures/markets').reply(200, [])
+mock.onGet('futures/markets').reply(200, SDK_MARKETS)
 
 mock.onGet('futures/smart-margin-balance-info').reply(200, {
 	freeMargin: 0,
@@ -37,22 +39,7 @@ mock.onGet('futures/conditional-orders').reply(200, [])
 
 mock.onGet('futures/delayed-orders').reply(200, [])
 
-mock.onGet('futures/smart-margin-trade-preview').reply(200, {
-	fee: 0,
-	liqPrice: 0,
-	margin: 0,
-	price: 0,
-	size: 0,
-	sizeDelta: 0,
-	side: 'long',
-	leverage: 0,
-	notionalValue: 0,
-	status: 0,
-	showStatus: true,
-	statusMessage: 'sample status',
-	priceImpact: 0,
-	exceedsPriceProtection: true,
-})
+mock.onGet('futures/smart-margin-trade-preview').reply(200, MOCK_TRADE_PREVIEW)
 
 mock.onGet('futures/position-history').reply(200, [])
 
