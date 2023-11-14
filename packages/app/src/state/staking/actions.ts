@@ -23,6 +23,7 @@ import {
 import { FetchStatus, ThunkConfig } from 'state/types'
 import { selectWallet } from 'state/wallet/selectors'
 import logError from 'utils/logError'
+import proxy from 'utils/proxy'
 
 import {
 	ZERO_CLAIMABLE_REWARDS,
@@ -40,7 +41,6 @@ import {
 	TransferEscrowEntriesInput,
 	TransferEscrowEntryInput,
 } from './types'
-import proxy from 'utils/proxy'
 
 export const fetchStakingData = createAsyncThunk<StakingAction, void, ThunkConfig>(
 	'staking/fetchStakingData',

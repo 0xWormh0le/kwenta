@@ -71,7 +71,6 @@ import {
 } from './selectors'
 import { CrossMarginTradePreview } from './types'
 
-
 export const fetchCrossMarginMarketData = createAsyncThunk<void, void, ThunkConfig>(
 	'futures/fetchCrossMarginMarketData',
 	async (_, { dispatch }) => {
@@ -260,7 +259,7 @@ export const fetchCrossMarginTradePreview = createAsyncThunk<
 			params: {
 				marketId: marketInfo.marketId,
 				size: params.sizeDelta,
-				settlementStrategy: marketInfo.settlementStrategies[0]
+				settlementStrategy: marketInfo.settlementStrategies[0],
 			},
 		})
 		const priceImpact = preview.fillPrice.sub(marketPrice).div(marketPrice).abs()

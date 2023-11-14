@@ -22,6 +22,7 @@ import {
 } from 'state/futures/smartMargin/selectors'
 import { useAppDispatch, useAppSelector } from 'state/hooks'
 import logError from 'utils/logError'
+import proxy from 'utils/proxy'
 
 import {
 	StyledBaseModal,
@@ -29,7 +30,6 @@ import {
 	BalanceText,
 	MaxButton,
 } from '../Trade/DepositWithdrawCrossMargin'
-import proxy from 'utils/proxy'
 
 type TransferType = 'deposit' | 'withdraw'
 
